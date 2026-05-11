@@ -3,10 +3,40 @@
   "date": "",
   "rows": [
     {
-      "period": "2",
-      "class": "7x/en",
-      "oldRoom": "EN0",
-      "newRoom": "Ma9"
+      "period": "4",
+      "class": "13B/Pc",
+      "oldRoom": "HU9",
+      "newRoom": "EN6"
+    },
+    {
+      "period": "4",
+      "class": "11Y2/Ma",
+      "oldRoom": "MA10",
+      "newRoom": "MA8"
+    },
+    {
+      "period": "4",
+      "class": "7B/Re",
+      "oldRoom": "HU8",
+      "newRoom": "EN5"
+    },
+    {
+      "period": "4",
+      "class": "8X1/Ma",
+      "oldRoom": "MA9",
+      "newRoom": "MA5"
+    },
+    {
+      "period": "4",
+      "class": "10A/Gg",
+      "oldRoom": "HU6",
+      "newRoom": "EN3"
+    },
+    {
+      "period": "4",
+      "class": "11Y3/Ma",
+      "oldRoom": "MA8",
+      "newRoom": "MA4"
     }
   ]
 }

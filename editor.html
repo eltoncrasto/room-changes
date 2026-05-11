@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Room Changes Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --navy:      #0B1F4B;
+      --blue:      #1E3A7A;
+      --gold:      #C9A227;
+      --green:     #166534;
+      --green-bg:  #dcfce7;
+      --red:       #991b1b;
+      --red-bg:    #fee2e2;
+      --amber:     #92400e;
+      --amber-bg:  #fef3c7;
+      --border:    #d1d5db;
+      --bg:        #f1f5f9;
+      --card:      #ffffff;
+      --text:      #1e293b;
+      --muted:     #64748b;
+    }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1.5rem 3rem;
+    }
+
+    .container { max-width: 940px; margin: 0 auto; }
+
+    /* ── Page header ── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.8rem;
+      padding-bottom: 1.2rem;
+      border-bottom: 3px solid var(--navy);
+    }
+
+    .page-header h1 { font-size: 1.6rem; font-weight: 700; color: var(--navy); }
+    .page-header p  { font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem; }
+
+    .header-actions { display: flex; gap: 0.6rem; align-items: center; }
+
+    .btn-view {
+      text-decoration: none;
+      background: var(--navy);
+      color: #fff;
+      padding: 0.55rem 1.1rem;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .link-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.82rem;
+      cursor: pointer;
+      text-decoration: underline;
+      font-family: inherit;
+      padding: 0;
+    }
+    .link-btn:hover { color: var(--text); }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.4rem 1.6rem;
+      margin-bottom: 1.4rem;
+    }
+
+    .card-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* ── Form grid ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.9rem 1.2rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.3rem;
+    }
+
+    input[type=text] {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      color: var(--text);
+      background: #fff;
+      transition: border-color 0.15s;
+    }
+
+    input[type=text]:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(30,58,122,0.1);
+    }
+
+    /* ── Table editor ── */
+    .table-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.8rem;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-right { margin-left: auto; }
+
+    table.edit-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    table.edit-table colgroup col:nth-child(1) { width: 9%; }
+    table.edit-table colgroup col:nth-child(2) { width: 30%; }
+    table.edit-table colgroup col:nth-child(3) { width: 24%; }
+    table.edit-table colgroup col:nth-child(4) { width: 24%; }
+    table.edit-table colgroup col:nth-child(5) { width: 13%; }
+
+    table.edit-table thead th {
+      background: var(--navy);
+      color: #fff;
+      padding: 0.6rem;
+      text-align: left;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    table.edit-table tbody tr:nth-child(even) { background: #f8fafc; }
+    table.edit-table tbody tr:hover { background: #eff6ff; }
+
+    table.edit-table td {
+      padding: 0.25rem 0.3rem;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: middle;
+    }
+
+    table.edit-table td input[type=text] {
+      border: 1px solid transparent;
+      border-radius: 5px;
+      padding: 0.4rem 0.5rem;
+      font-size: 0.9rem;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    table.edit-table td input[type=text]:focus {
+      border-color: var(--blue);
+      background: #fff;
+      box-shadow: 0 0 0 2px rgba(30,58,122,0.1);
+    }
+
+    .row-actions { display: flex; gap: 4px; justify-content: center; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.52rem 1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 600;
+      font-family: inherit;
+      transition: opacity 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-navy    { background: var(--navy); color: #fff; }
+    .btn-blue    { background: var(--blue); color: #fff; }
+    .btn-ghost   { background: #e2e8f0;     color: var(--text); }
+    .btn-publish {
+      background: var(--gold);
+      color: var(--navy);
+      font-weight: 700;
+      padding: 0.75rem 2.2rem;
+      font-size: 1rem;
+      border-radius: 8px;
+    }
+
+    .icon-btn {
+      width: 28px; height: 28px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: #fff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+      transition: background 0.15s, color 0.15s;
+    }
+    .icon-btn:hover     { background: #f1f5f9; color: var(--text); }
+    .icon-btn.del:hover { background: var(--red-bg); color: var(--red); border-color: #fca5a5; }
+
+    /* ── Publish row ── */
+    .publish-row {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+    }
+
+    .publish-note {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* ── Status ── */
+    #status {
+      padding: 0.75rem 1rem;
+      border-radius: 7px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-top: 1rem;
+      display: none;
+    }
+    #status.success { background: var(--green-bg); color: var(--green);  display: block; }
+    #status.error   { background: var(--red-bg);   color: var(--red);    display: block; }
+    #status.loading { background: var(--amber-bg); color: var(--amber);  display: block; }
+
+    .row-count { font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+
+    /* ── Token modal ── */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+    }
+    .modal-backdrop.hidden { display: none; }
+
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 460px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .modal h2 { font-size: 1.1rem; font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; }
+    .modal p  { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.2rem; line-height: 1.6; }
+
+    .modal input[type=password] {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: 'Inter', monospace;
+      margin-bottom: 1rem;
+    }
+    .modal input[type=password]:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(30,58,122,0.1);
+    }
+
+    .modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+
+<!-- Token modal -->
+<div class="modal-backdrop hidden" id="tokenModal">
+  <div class="modal">
+    <h2>Enter your GitHub Token</h2>
+    <p>
+      A Personal Access Token is needed to publish changes. It is stored only in this browser and never shared.<br><br>
+      Create one at <strong>GitHub → Settings → Developer settings → Fine-grained tokens</strong>, with <strong>Contents: Read and Write</strong> access for this repository.
+    </p>
+    <input type="password" id="tokenInput" placeholder="github_pat_…">
+    <div class="modal-actions">
+      <button class="btn btn-navy" onclick="saveToken()">Save &amp; Continue</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div>
+      <h1>Room Changes Editor</h1>
+      <p>Update the display and publish with one click.</p>
+    </div>
+    <div class="header-actions">
+      <button class="link-btn" onclick="changeToken()">Change token</button>
+      <a class="btn-view" href="index.html" target="_blank">View Display ↗</a>
+    </div>
+  </div>
+
+  <!-- Display Header -->
+  <div class="card">
+    <div class="card-title">Display Header</div>
+    <div class="form-grid">
+      <div>
+        <label>Title</label>
+        <input type="text" id="pageTitle" value="Room Changes">
+      </div>
+      <div>
+        <label>Date</label>
+        <input type="text" id="pageDate" placeholder="e.g. Monday 12th May">
+      </div>
+    </div>
+  </div>
+
+  <!-- Room Changes table -->
+  <div class="card">
+    <div class="card-title">
+      Room Changes
+      <span class="row-count" id="rowCount">0 rows</span>
+    </div>
+
+    <div class="table-toolbar">
+      <button class="btn btn-blue" onclick="addRow()">+ Add Row</button>
+      <button class="btn btn-ghost" onclick="sortByPeriod()">Sort by Period</button>
+      <div class="toolbar-right">
+        <button class="btn btn-ghost" onclick="clearAll()">Clear All</button>
+      </div>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table class="edit-table">
+        <colgroup><col><col><col><col><col></colgroup>
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th>Class</th>
+            <th>Old Room</th>
+            <th>New Room</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="editBody"></tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:0.8rem">
+      <button class="btn btn-ghost" onclick="addRow()">+ Add Row</button>
+    </div>
+  </div>
+
+  <!-- Publish -->
+  <div class="card">
+    <div class="publish-row">
+      <button class="btn btn-publish" onclick="publish()">Publish to Display Screen</button>
+      <span class="publish-note">
+        Saves changes to GitHub. The display screen refreshes automatically within 30 seconds.
+      </span>
+    </div>
+    <div id="status"></div>
+  </div>
+
+</div>
+
+<script>
+  // ── Repo auto-detection ─────────────────────────────────────────────────
+  // When hosted on GitHub Pages the URL is: https://owner.github.io/repo/editor.html
+  function detectRepo() {
+    const host = window.location.hostname;
+    const path = window.location.pathname;
+    if (host.endsWith('.github.io')) {
+      const owner = host.replace('.github.io', '');
+      const parts = path.split('/').filter(Boolean);
+      // User/org page: username.github.io  → repo = username.github.io
+      // Project page:  username.github.io/repo/… → repo = repo
+      const repo = parts.length > 1 ? parts[0] : `${owner}.github.io`;
+      return { owner, repo };
+    }
+    return null;
+  }
+
+  // ── Token management ────────────────────────────────────────────────────
+  function getToken() { return localStorage.getItem('gh_token') || ''; }
+
+  function saveToken() {
+    const val = document.getElementById('tokenInput').value.trim();
+    if (!val) return;
+    localStorage.setItem('gh_token', val);
+    document.getElementById('tokenModal').classList.add('hidden');
+    // Retry publish if it was waiting
+    if (pendingPublish) { pendingPublish = false; publish(); }
+  }
+
+  function changeToken() {
+    document.getElementById('tokenInput').value = getToken();
+    document.getElementById('tokenModal').classList.remove('hidden');
+    document.getElementById('tokenInput').focus();
+  }
+
+  let pendingPublish = false;
+
+  function requireToken() {
+    if (getToken()) return true;
+    pendingPublish = true;
+    changeToken();
+    return false;
+  }
+
+  // Allow Enter key in token modal
+  document.getElementById('tokenInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveToken();
+  });
+
+  // Show token modal on first visit
+  if (!getToken()) changeToken();
+
+  // ── Row management ──────────────────────────────────────────────────────
+  let rowId = 0;
+
+  function addRow(data = {}) {
+    const tbody = document.getElementById('editBody');
+    const id = ++rowId;
+    const tr = document.createElement('tr');
+    tr.dataset.id = id;
+    tr.innerHTML =
+      `<td><input type="text" placeholder="1"      value="${esc(data.period  ?? '')}" class="f-period"></td>` +
+      `<td><input type="text" placeholder="12B/Ma" value="${esc(data.class   ?? '')}"></td>` +
+      `<td><input type="text" placeholder="Ma10"   value="${esc(data.oldRoom ?? '')}"></td>` +
+      `<td><input type="text" placeholder="Ma8"    value="${esc(data.newRoom ?? '')}"></td>` +
+      `<td><div class="row-actions">` +
+        `<button class="icon-btn" title="Move up"   onclick="moveRow(this,-1)">↑</button>` +
+        `<button class="icon-btn" title="Move down" onclick="moveRow(this, 1)">↓</button>` +
+        `<button class="icon-btn del" title="Delete" onclick="deleteRow(this)">✕</button>` +
+      `</div></td>`;
+    tbody.appendChild(tr);
+    updateRowCount();
+    tr.querySelector('input').focus();
+  }
+
+  function deleteRow(btn) { btn.closest('tr').remove(); updateRowCount(); }
+
+  function moveRow(btn, dir) {
+    const tr    = btn.closest('tr');
+    const tbody = tr.parentElement;
+    const rows  = Array.from(tbody.rows);
+    const idx   = rows.indexOf(tr);
+    const other = rows[idx + dir];
+    if (!other) return;
+    dir === -1 ? tbody.insertBefore(tr, other) : tbody.insertBefore(other, tr);
+  }
+
+  function sortByPeriod() {
+    const tbody = document.getElementById('editBody');
+    Array.from(tbody.rows)
+      .sort((a, b) => {
+        const pa = a.querySelector('.f-period').value;
+        const pb = b.querySelector('.f-period').value;
+        return pa.localeCompare(pb, undefined, { numeric: true });
+      })
+      .forEach(r => tbody.appendChild(r));
+  }
+
+  function clearAll() {
+    if (!confirm('Clear all rows?')) return;
+    document.getElementById('editBody').innerHTML = '';
+    updateRowCount();
+  }
+
+  function updateRowCount() {
+    const n = document.getElementById('editBody').rows.length;
+    document.getElementById('rowCount').textContent = `${n} row${n !== 1 ? 's' : ''}`;
+  }
+
+  function collectRows() {
+    return Array.from(document.getElementById('editBody').rows)
+      .map(tr => {
+        const inputs = tr.querySelectorAll('input');
+        return {
+          period:  inputs[0].value.trim(),
+          class:   inputs[1].value.trim(),
+          oldRoom: inputs[2].value.trim(),
+          newRoom: inputs[3].value.trim(),
+        };
+      })
+      .filter(r => r.period || r.class);
+  }
+
+  // ── GitHub API ──────────────────────────────────────────────────────────
+  async function publish() {
+    if (!requireToken()) return;
+
+    const creds = detectRepo();
+    if (!creds) {
+      showStatus('Cannot detect GitHub repository from this URL. Make sure the page is hosted on GitHub Pages.', 'error');
+      return;
+    }
+
+    const payload = {
+      title: document.getElementById('pageTitle').value.trim() || 'Room Changes',
+      date:  document.getElementById('pageDate').value.trim(),
+      rows:  collectRows(),
+    };
+
+    if (payload.rows.length === 0) {
+      showStatus('Add at least one row before publishing.', 'error');
+      return;
+    }
+
+    showStatus('Publishing to GitHub…', 'loading');
+
+    const { owner, repo } = creds;
+    const token = getToken();
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/data.json`;
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+    };
+
+    try {
+      // Fetch current SHA
+      const getRes = await fetch(apiUrl, { headers });
+      let sha;
+      if (getRes.ok) {
+        sha = (await getRes.json()).sha;
+      } else if (getRes.status === 401) {
+        localStorage.removeItem('gh_token');
+        showStatus('Token rejected — please re-enter your GitHub token.', 'error');
+        changeToken();
+        return;
+      } else if (getRes.status !== 404) {
+        throw new Error(`GitHub responded with ${getRes.status}`);
+      }
+
+      const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
+      const body    = { message: `Update room changes — ${payload.date}`, content };
+      if (sha) body.sha = sha;
+
+      const putRes = await fetch(apiUrl, { method: 'PUT', headers, body: JSON.stringify(body) });
+
+      if (!putRes.ok) {
+        const err = await putRes.json().catch(() => ({}));
+        throw new Error(err.message || `HTTP ${putRes.status}`);
+      }
+
+      showStatus('✓ Published! The display screen will refresh within 30 seconds.', 'success');
+    } catch (e) {
+      showStatus(`Publish failed: ${e.message}`, 'error');
+    }
+  }
+
+  // ── Utilities ───────────────────────────────────────────────────────────
+  function showStatus(msg, type) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className   = type;
+  }
+
+  function esc(s) {
+    return String(s ?? '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+
+  // ── Init ────────────────────────────────────────────────────────────────
+  const today = new Date().toLocaleDateString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long'
+  });
+  const dateInput = document.getElementById('pageDate');
+  if (!dateInput.value) dateInput.placeholder = today;
+</script>
+</body>
+</html>

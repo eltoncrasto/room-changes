@@ -260,7 +260,9 @@
     // ── Data load ──────────────────────────────────────────
     async function loadData() {
       try {
-        const res = await fetch(`data.json?_=${Date.now()}`);
+        const dataUrl = new URL('data.json', 'https://eltoncrasto.github.io/room-changes/');
+        dataUrl.searchParams.set('_', Date.now());
+        const res = await fetch(dataUrl.toString());
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 

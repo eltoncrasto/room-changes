@@ -388,7 +388,7 @@
     <div class="publish-row">
       <button class="btn btn-publish" onclick="publish()">Publish to Display Screen</button>
       <span class="publish-note">
-        Saves changes to GitHub. The display screen refreshes automatically within 30 seconds.
+        Saves changes to GitHub. The display screen refreshes automatically within 60 seconds.
       </span>
     </div>
     <div id="status"></div>
@@ -520,6 +520,41 @@
   }
 
   // ── GitHub API ──────────────────────────────────────────────────────────
+
+  // Push a single file to GitHub, creating or updating it.
+  async function pushFile(filename, textContent, commitMsg) {
+    const { owner, repo } = detectRepo();
+    const token  = getToken();
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`;
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+    };
+
+    const getRes = await fetch(apiUrl, { headers });
+    let sha;
+    if (getRes.ok) {
+      sha = (await getRes.json()).sha;
+    } else if (getRes.status === 401) {
+      localStorage.removeItem('gh_token');
+      showStatus('Token rejected — please re-enter your GitHub token.', 'error');
+      changeToken();
+      throw new Error('auth');
+    } else if (getRes.status !== 404) {
+      throw new Error(`GitHub responded with ${getRes.status}`);
+    }
+
+    const body = { message: commitMsg, content: btoa(unescape(encodeURIComponent(textContent))) };
+    if (sha) body.sha = sha;
+
+    const putRes = await fetch(apiUrl, { method: 'PUT', headers, body: JSON.stringify(body) });
+    if (!putRes.ok) {
+      const err = await putRes.json().catch(() => ({}));
+      throw new Error(err.message || `HTTP ${putRes.status}`);
+    }
+  }
+
   async function publish() {
     if (!requireToken()) return;
 
@@ -541,46 +576,106 @@
     }
 
     showStatus('Publishing to GitHub…', 'loading');
-
-    const { owner, repo } = creds;
-    const token = getToken();
-    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/data.json`;
-    const headers = {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github+json',
-      'Content-Type': 'application/json',
-    };
+    const msg = `Update room changes — ${payload.date}`;
 
     try {
-      // Fetch current SHA
-      const getRes = await fetch(apiUrl, { headers });
-      let sha;
-      if (getRes.ok) {
-        sha = (await getRes.json()).sha;
-      } else if (getRes.status === 401) {
-        localStorage.removeItem('gh_token');
-        showStatus('Token rejected — please re-enter your GitHub token.', 'error');
-        changeToken();
-        return;
-      } else if (getRes.status !== 404) {
-        throw new Error(`GitHub responded with ${getRes.status}`);
-      }
-
-      const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
-      const body    = { message: `Update room changes — ${payload.date}`, content };
-      if (sha) body.sha = sha;
-
-      const putRes = await fetch(apiUrl, { method: 'PUT', headers, body: JSON.stringify(body) });
-
-      if (!putRes.ok) {
-        const err = await putRes.json().catch(() => ({}));
-        throw new Error(err.message || `HTTP ${putRes.status}`);
-      }
-
-      showStatus('✓ Published! The display screen will refresh within 30 seconds.', 'success');
+      // Push data.json (used by the editor's Load button)
+      await pushFile('data.json', JSON.stringify(payload, null, 2), msg);
+      // Push a fully self-contained index.html with data baked in — no fetch needed on the display
+      await pushFile('index.html', generateHTML(payload), msg);
+      showStatus('✓ Published! The display screen will refresh within 60 seconds.', 'success');
     } catch (e) {
-      showStatus(`Publish failed: ${e.message}`, 'error');
+      if (e.message !== 'auth') showStatus(`Publish failed: ${e.message}`, 'error');
     }
+  }
+
+  // Build a completely self-contained display page — no external data fetching.
+  // Uses <meta http-equiv="refresh"> so the display reloads the latest version automatically.
+  function generateHTML(data) {
+    function h(s) {
+      return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    let rows = '';
+    let lastPeriod = null;
+    (data.rows || []).forEach(row => {
+      const brk = (lastPeriod !== null && row.period !== lastPeriod) ? ' class="period-break"' : '';
+      rows += `<tr${brk}><td class="period">${h(row.period)}</td><td>${h(row.class)}</td>` +
+              `<td class="old-room">${h(row.oldRoom)}</td><td class="new-room">${h(row.newRoom)}</td></tr>`;
+      lastPeriod = row.period;
+    });
+
+    const published = new Date().toLocaleString('en-GB');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="refresh" content="60">
+<title>${h(data.title || 'Room Changes')}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--navy:#0B1F4B;--navy-lite:#1E3A7A;--gold:#C9A227;--gold-lite:#E8BF50;--muted:rgba(255,255,255,0.45);--row-alt:rgba(255,255,255,0.035);--separator:rgba(201,162,39,0.35)}
+html,body{height:100%;font-family:'Inter','Segoe UI',Arial,sans-serif;background:var(--navy);color:#fff;overflow:hidden}
+body{display:flex;flex-direction:column;padding:2.2vh 3vw 1.5vh;gap:2vh}
+header{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--gold);padding-bottom:1.6vh;flex-shrink:0}
+.header-left h1{font-size:clamp(1.6rem,4vw,3rem);font-weight:800;letter-spacing:-0.03em;line-height:1}
+.header-left .subtitle{font-size:clamp(0.9rem,1.8vw,1.4rem);font-weight:500;color:var(--gold-lite);margin-top:0.4vh;letter-spacing:0.02em}
+.header-right{text-align:right}
+.clock{font-size:clamp(1.8rem,4.5vw,3.2rem);font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1}
+.clock-date{font-size:clamp(0.75rem,1.4vw,1rem);color:var(--muted);margin-top:0.3vh}
+.table-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+col:nth-child(1){width:10%}col:nth-child(2){width:30%}col:nth-child(3){width:30%}col:nth-child(4){width:30%}
+thead th{background:var(--navy-lite);padding:clamp(0.5rem,1.2vh,1rem) clamp(0.6rem,1.5vw,1.5rem);text-align:left;font-size:clamp(0.7rem,1.4vw,1rem);font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold-lite);border-bottom:2px solid var(--gold)}
+tbody tr{border-bottom:1px solid rgba(255,255,255,0.06)}
+tbody tr:nth-child(even){background:var(--row-alt)}
+tbody tr.period-break td{border-top:2px solid var(--separator);padding-top:clamp(0.7rem,1.5vh,1.2rem)}
+td{padding:clamp(0.45rem,1.1vh,0.9rem) clamp(0.6rem,1.5vw,1.5rem);font-size:clamp(0.8rem,1.9vw,1.35rem);vertical-align:middle}
+td.period{font-weight:800;font-size:clamp(1rem,2.4vw,1.7rem);color:var(--gold);letter-spacing:-0.02em}
+td.new-room{font-weight:600;color:#7EE8A2}
+td.old-room{color:rgba(255,255,255,0.55);text-decoration:line-through;text-decoration-color:rgba(255,255,255,0.25)}
+footer{display:flex;justify-content:space-between;align-items:center;flex-shrink:0;padding-top:1vh;border-top:1px solid rgba(255,255,255,0.1)}
+.notice{font-size:clamp(0.6rem,1vw,0.8rem);color:var(--muted)}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gold);margin-right:6px;vertical-align:middle;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.2}}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <h1>${h(data.title || 'Room Changes')}</h1>
+    <div class="subtitle">${h(data.date || '')}</div>
+  </div>
+  <div class="header-right">
+    <div class="clock" id="clock">--:--</div>
+    <div class="clock-date" id="clockDate"></div>
+  </div>
+</header>
+<div class="table-wrap">
+  <table>
+    <colgroup><col><col><col><col></colgroup>
+    <thead><tr><th>Period</th><th>Class</th><th>Old Room</th><th>New Room</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+</div>
+<footer>
+  <div class="notice"><span class="dot"></span>Refreshes automatically every minute</div>
+  <div class="notice">Published: ${published}</div>
+</footer>
+<script>
+function tick(){
+  var n=new Date();
+  document.getElementById('clock').textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');
+  document.getElementById('clockDate').textContent=n.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
+tick();setInterval(tick,1000);
+<\/script>
+</body>
+</html>`;
   }
 
   // ── Utilities ───────────────────────────────────────────────────────────
